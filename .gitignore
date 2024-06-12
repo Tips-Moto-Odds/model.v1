@@ -163,3 +163,4 @@ data/
 .production-env
 .index.py.swp
 .env
+.idea/

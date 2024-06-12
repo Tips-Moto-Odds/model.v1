@@ -3,42 +3,17 @@ import requests
 import mariadb
 import os
 from dotenv import load_dotenv
-
-
 from sklearn.ensemble import RandomForestClassifier
 from bs4 import BeautifulSoup
 
+# model imports
+from constants import url_list
 
-url_list = {
-        # European
-    'url_epl' : 'https://www.football-data.co.uk/mmz4281/2324/E0.csv',
-    'url_championship' : 'https://www.football-data.co.uk/mmz4281/2324/E1.csv',
-    'url_league1' : 'https://www.football-data.co.uk/mmz4281/2324/E2.csv',
-    'url_league2' : 'https://www.football-data.co.uk/mmz4281/2324/E3.csv',
-    'url_conference' : 'https://www.football-data.co.uk/mmz4281/2324/EC.csv',
-    
-        # Spain
-    'url_la_liga_primera_division' : 'https://www.football-data.co.uk/mmz4281/2324/SP1.csv',
-    'url_la_liga_segunda_division' : 'https://www.football-data.co.uk/mmz4281/2324/SP2.csv',
-    
-        # German
-    'url_bundesliga_1' : 'https://www.football-data.co.uk/mmz4281/2324/D1.csv',
-    'url_bundesliga_2' : 'https://www.football-data.co.uk/mmz4281/2324/D2.csv',
-    
-        # Italy
-    'url_serie_A' : 'https://www.football-data.co.uk/mmz4281/2324/I1.csv',
-    'url_serie_B' : 'https://www.football-data.co.uk/mmz4281/2324/I2.csv',
-    
-        # France
-    'url_le_championnat' : 'https://www.football-data.co.uk/mmz4281/2324/F1.csv',  # Ligue 1
-    'url_division_2' : 'https://www.football-data.co.uk/mmz4281/2324/F2.csv'
-    
-        # Scotland
-}
+# preconfigure
+load_dotenv()
 
 
 def train_model():
-    
     # team_codes = {team: code for code, team in enumerate(team_names.astype('category').cat.categories)}
 
     for n in range(len(team_names)):
@@ -62,6 +37,7 @@ def train_model():
 
 
 n = 0
+
 for url_name, url in url_list.items():
     file_name = f'./data/E{n}.csv'
     response = requests.get(url)
@@ -70,8 +46,7 @@ for url_name, url in url_list.items():
             file.write(response.content)
         n += 1
     else:
-        print(f'Failed to download file {n+1}. Status code: {response.status_code}')
-
+        print(f'Failed to download file {n + 1}. Status code: {response.status_code}')
 
 df0 = pd.read_csv('data/E0.csv')
 df1 = pd.read_csv('data/E1.csv')
@@ -112,7 +87,6 @@ for df in df_list:
     for team in unique_teams:
         team_names.append(team)
 
-
 rf = train_model()
 
 # Scrape upcoming matches
@@ -145,7 +119,7 @@ match_data = []
 for url in url_list:
     soup = BeautifulSoup(requests.get(url).content, "html.parser")
     match_containers = soup.find_all("div", class_="fixres__item")
-    
+
     for container in match_containers:
         # Find the participant elements (one for each team)
         participant_elements = container.find_all("span", class_="matches__participant")
@@ -158,9 +132,8 @@ for url in url_list:
             "home_team": home_team,
             "away_team": away_team,
         }
-        
-        match_data.append(match_info)
 
+        match_data.append(match_info)
 
 # append match odds to each match object
 for match in match_data:
@@ -169,21 +142,23 @@ for match in match_data:
         team_names.append(match['home_team'])
         team_names.append(match['away_team'])
         rf = train_model()
-    
+
     this_match = pd.DataFrame({
         'home_code': [team_codes.get(match['home_team'])],
         'away_code': [team_codes.get(match['away_team'])],
         'hour': match['time'][:2]
     })
-    
+
     prediction = rf.predict(this_match)
 
     probabilities = rf.predict_proba(this_match)
 
-    loss, draw, win = 1/probabilities[0][0], 1/probabilities[0][1], 1/probabilities[0][2]
+    loss, draw, win = 1 / probabilities[0][0], 1 / probabilities[0][1], 1 / probabilities[0][2]
 
     match['FTR'], match['H'], match['D'], match['A'] = prediction[0], win, draw, loss
 
+cursor = None
+conn = None
 
 # Send match odds to server
 try:
@@ -192,13 +167,12 @@ try:
         user=os.getenv('DB_USERNAME'),
         password=os.getenv('DB_PASSWORD'),
         database=os.getenv('DB_DATABASE'),
-        port=int(os.getenv('DB_PORT'))
+        port=3306
     )
     cursor = conn.cursor()
-  
-except mariadb.Error as err:
-     print(f"Failed to connect to MariaDB: {err}")
 
+except mariadb.Error as err:
+    print(f"Failed to connect to MariaDB: {err}")
 
 # TODO: Copy this code to final notebooks
 for match in match_data:
