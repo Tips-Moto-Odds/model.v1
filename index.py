@@ -1,9 +1,13 @@
 import pandas as pd
 import requests
 import mariadb
+import os
+from dotenv import load_dotenv
+
 
 from sklearn.ensemble import RandomForestClassifier
 from bs4 import BeautifulSoup
+
 
 url_list = {
         # European
@@ -57,16 +61,16 @@ def train_model():
     return rf
 
 
-n = 0
-for url_name, url in url_list.items():
-    file_name = f'./data/E{n}.csv'
-    response = requests.get(url)
-    if response.status_code == 200:
-        with open(file_name, 'wb') as file:
-            file.write(response.content)
-        n += 1
-    else:
-        print(f'Failed to download file {n+1}. Status code: {response.status_code}')
+# n = 0
+# for url_name, url in url_list.items():
+#     file_name = f'./data/E{n}.csv'
+#     response = requests.get(url)
+#     if response.status_code == 200:
+#         with open(file_name, 'wb') as file:
+#             file.write(response.content)
+#         n += 1
+#     else:
+#         print(f'Failed to download file {n+1}. Status code: {response.status_code}')
 
 
 df0 = pd.read_csv('data/E0.csv')
@@ -114,19 +118,31 @@ rf = train_model()
 
 # Scrape upcoming matches
 
+# url_list = [
+#     "https://www.skysports.com/premier-league-fixtures",
+#     "https://www.skysports.com/league-1-fixtures",
+#     "https://www.skysports.com/league-2-fixtures",
+#     "https://www.skysports.com/la-liga-fixtures",
+#     "https://www.skysports.com/bundesliga-fixtures",
+#     "https://www.skysports.com/serie-a-fixtures",
+#     "https://www.skysports.com/ligue-1-fixtures",
+#     "https://www.skysports.com/carabao-cup-fixtures"
+# ]
+
 url_list = [
-    "https://www.skysports.com/premier-league-fixtures",
-    "https://www.skysports.com/league-1-fixtures",
-    "https://www.skysports.com/league-2-fixtures",
-    "https://www.skysports.com/la-liga-fixtures",
-    "https://www.skysports.com/bundesliga-fixtures",
-    "https://www.skysports.com/serie-a-fixtures",
-    "https://www.skysports.com/ligue-1-fixtures",
-    "https://www.skysports.com/carabao-cup-fixtures"
+    "https://www.skysports.com/premier-league-results/2021-22",
+    # "https://www.skysports.com/league-1-fixtures/2022-23",
+    # "https://www.skysports.com/league-2-fixtures/2022-23",
+    # "https://www.skysports.com/la-liga-fixtures/2022-23",
+    # "https://www.skysports.com/bundesliga-fixtures/2022-23",
+    # "https://www.skysports.com/serie-a-fixtures/2022-23",
+    # "https://www.skysports.com/ligue-1-fixtures/2022-23",
+    # "https://www.skysports.com/carabao-cup-fixtures/2022-23"
 ]
 
 match_data = []
 
+# scraping data from the websites. Add match objects to list
 for url in url_list:
     soup = BeautifulSoup(requests.get(url).content, "html.parser")
     match_containers = soup.find_all("div", class_="fixres__item")
@@ -147,6 +163,7 @@ for url in url_list:
         match_data.append(match_info)
 
 
+# append match odds to each match object
 for match in match_data:
 
     if match['home_team'] not in team_names or match['away_team'] not in team_names:
@@ -173,17 +190,19 @@ for match in match_data:
 
 try:
     conn = mariadb.connect(
-      host="localhost",
-      user="root",
-      password="",
-      database="tips_moto",
-      port=3307
+        host=os.getenv('DB_HOST'),
+        user=os.getenv('DB_USERNAME'),
+        password=os.getenv('DB_PASSWORD'),
+        database=os.getenv('DB_DATABASE'),
+        port=int(os.getenv('DB_PORT'))
     )
     cursor = conn.cursor()
   
 except mariadb.Error as err:
      print(f"Failed to connect to MariaDB: {err}")
 
+
+# Copy this code to final notebooks:
 for match in match_data:
     home_team = match['home_team']
     away_team = match['away_team']
@@ -192,10 +211,10 @@ for match in match_data:
     draw = round(float(match['D']), 2)
     away = round(float(match['A']), 2)
 
-    sql = """INSERT INTO tips (home_team, away_team, full_time_result, home, draw, away)
+    sql = """INSERT INTO tips (home_teams, away_teams, home_odds, away_odds, draw_odds, predictions)
              VALUES (%s, %s, %s, %s, %s, %s)"""
 
-    cursor.execute(sql, (home_team, away_team, FTR, home, draw, away))
+    cursor.execute(sql, (home_team, away_team, home, away, draw, FTR))
 
 # Commit the transaction if necessary
 conn.commit()
