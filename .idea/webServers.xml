@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="WebServers">
+    <option name="servers">
+      <webServer id="db696943-0c9b-4282-916b-88fb82874c5a" name="TipsM">
+        <fileTransfer rootFolder="/var/www/vhosts/tipsmoto.co.ke/httpdocs/tipsmoto/Model" accessType="SFTP" host="82.165.200.92" port="22" sshConfigId="4ca60e21-6f14-40f5-a7a7-fc9ff751a707" sshConfig="root@82.165.200.92:22 password">
+          <advancedOptions>
+            <advancedOptions dataProtectionLevel="Private" keepAliveTimeout="0" passiveMode="true" shareSSLContext="true" />
+          </advancedOptions>
+        </fileTransfer>
+      </webServer>
+    </option>
+  </component>
+</project>
