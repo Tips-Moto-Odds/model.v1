@@ -61,16 +61,16 @@ def train_model():
     return rf
 
 
-# n = 0
-# for url_name, url in url_list.items():
-#     file_name = f'./data/E{n}.csv'
-#     response = requests.get(url)
-#     if response.status_code == 200:
-#         with open(file_name, 'wb') as file:
-#             file.write(response.content)
-#         n += 1
-#     else:
-#         print(f'Failed to download file {n+1}. Status code: {response.status_code}')
+n = 0
+for url_name, url in url_list.items():
+    file_name = f'./data/E{n}.csv'
+    response = requests.get(url)
+    if response.status_code == 200:
+        with open(file_name, 'wb') as file:
+            file.write(response.content)
+        n += 1
+    else:
+        print(f'Failed to download file {n+1}. Status code: {response.status_code}')
 
 
 df0 = pd.read_csv('data/E0.csv')
@@ -108,7 +108,6 @@ team_names = []
 team_codes = {}
 
 for df in df_list:
-    #df['home_code'] = df['HomeTeam'].astype('category').cat.codes
     unique_teams = df['HomeTeam'].unique()
     for team in unique_teams:
         team_names.append(team)
@@ -117,7 +116,7 @@ for df in df_list:
 rf = train_model()
 
 # Scrape upcoming matches
-
+# TODO: uncomment for production
 # url_list = [
 #     "https://www.skysports.com/premier-league-fixtures",
 #     "https://www.skysports.com/league-1-fixtures",
@@ -187,7 +186,6 @@ for match in match_data:
 
 
 # Send match odds to server
-
 try:
     conn = mariadb.connect(
         host=os.getenv('DB_HOST'),
@@ -202,7 +200,7 @@ except mariadb.Error as err:
      print(f"Failed to connect to MariaDB: {err}")
 
 
-# Copy this code to final notebooks:
+# TODO: Copy this code to final notebooks
 for match in match_data:
     home_team = match['home_team']
     away_team = match['away_team']
